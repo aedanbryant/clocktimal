@@ -9,7 +9,7 @@ pinsets_compact.py creates pinset_mappings.bin where every 14 integers correspon
 
 
 Options:
-
+```
 -t N
     Use N CPU threads
 -i filename
@@ -26,13 +26,34 @@ Options:
     Print simtick optimal solution (defaults to printing all solutions)
 -v N
     Prints a progress update every N scrambles when in batch mode, doesn't print any if 0 or not specified
+```
 
+Options for movecountstats:
+```
+-t N
+    Use N CPU threads
+-n N
+    Computes stats for N scrambles, defaults to 100
+-m
+    Move optimal solutions
+-k
+    Tick optimal solution
+-s
+    Simul optimal solution
+-c
+    Simtick optimal solution
+-v N
+    Prints a progress update every N scrambles, deafults to every scramble if 0 or unspecified
+
+
+
+```
 
 
 Possible future improvements:
-Scramble input
-Statistics for one scramble
-Optimize pinset generation
-Optimize pinset storage
-Research 12 move pinset coverage (all unique 12 movers? remove dupes?)
-Other clock puzzles
+- Scramble input
+- Statistics for one scramble
+- Optimize pinset generation
+- Optimize pinset storage
+- Research 12 move pinset coverage (all unique 12 movers? remove dupes?)
+- Other clock puzzles

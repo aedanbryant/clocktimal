@@ -3,13 +3,12 @@
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
-
+#include <unistd.h>
 
 #include "utils.h"
 #include "solvers.h"
+#include "clocktimal.h"
 
-
-#define MOVEDISPLAY 40
 
 int main(int argc, char *argv[]) {
 
@@ -21,14 +20,63 @@ int main(int argc, char *argv[]) {
     int scramble[PINSET_LENGTH];
     int i, j;
     int scrambles = 100;
+    int metrics = MOVECOUNT;
+    int verbose = 0;
+    int move_display = 14;
 
     DATA_T *program_data;
 
-    if (argc == 2) {
-        scrambles = atoi(argv[1]);
-    } else if (argc == 3) {
-        scrambles = atoi(argv[1]);
-        num_threads = atoi(argv[2]);
+    /* Command Line Arguments */
+    int opt;
+    while ((opt = getopt(argc, argv, "t:n:mkscv:")) != -1) {
+        switch (opt) {
+        case 't':
+            num_threads = atoi(optarg);
+            break;
+        case 'n':
+            scrambles = atoi(optarg);
+            break;
+        case 'm':
+            if (metrics != MOVECOUNT) {
+                printf("Only one metric allowed\n");
+                return -1;
+            }
+            metrics = MOVECOUNT;
+            move_display = 13;
+            break;
+        case 'k':
+            if (metrics != MOVECOUNT) {
+                printf("Only one metric allowed\n");
+                return -1;
+            }
+            metrics = TICKCOUNT;
+            move_display = 40;
+            break;
+        case 's':
+            if (metrics != MOVECOUNT) {
+                printf("Only one metric allowed\n");
+                return -1;
+            }
+            metrics = SIMLULCOUNT;
+            move_display = 8;
+            break;
+        case 'c':
+            if (metrics != MOVECOUNT) {
+                printf("Only one metric allowed\n");
+                return -1;
+            }
+            metrics = SIMTICKCOUNT;
+            move_display = 30;
+            break;
+        case 'v':
+            verbose = atoi(optarg);
+            break;
+        case ':':       /* -f or -o without operand */
+            fprintf(stderr, "Option -%c requires an operand\n", optopt);
+            break;
+        case '?':
+            fprintf(stderr, "Unrecognized option: '-%c'\n", optopt);
+        }
     }
     
     program_data = (DATA_T *)malloc(sizeof(DATA_T));
@@ -77,9 +125,9 @@ int main(int argc, char *argv[]) {
     }
 
 
-    int movecount_stats[MOVEDISPLAY];
+    int movecount_stats[move_display];
 
-    for (i = 0; i < MOVEDISPLAY; i++) {
+    for (i = 0; i < move_display; i++) {
         movecount_stats[i] = 0;
     }
 
@@ -95,16 +143,24 @@ int main(int argc, char *argv[]) {
             scramble[j] = rand() % 12;  // Generates a number from 0 to 11
         }
 
-        // move_optimal(thread_data, threads, program_data, scramble, num_threads);
-        tick_optimal(thread_data, threads, program_data, scramble, num_threads);
-        // all_optimal(thread_data, threads, program_data, scramble, num_threads);
+        if (metrics == MOVECOUNT) {
+            move_optimal(thread_data, threads, program_data, scramble, num_threads);
+            movecount_stats[(program_data->solution_info)->optmoves]++;
+        } else if (metrics == TICKCOUNT) {
+            tick_optimal(thread_data, threads, program_data, scramble, num_threads);
+            movecount_stats[(program_data->solution_info)->optticks]++;
+        } else if (metrics == SIMLULCOUNT) {
+            all_optimal(thread_data, threads, program_data, scramble, num_threads);
+            movecount_stats[(program_data->solution_info)->optsimul]++;
+        } else if (metrics == SIMTICKCOUNT) {
+            all_optimal(thread_data, threads, program_data, scramble, num_threads);
+            movecount_stats[(program_data->solution_info)->optsimticks]++;
+        }
 
-
-        printf("\rCount: %d", i + 1);
-        fflush(stdout);
-        movecount_stats[(program_data->solution_info)->optticks]++;
-
-
+        if ((verbose > 0) && ((i + 1) % verbose == 0)) {
+            printf("\rCount: %d", i + 1);
+            fflush(stdout);
+        }
 
         // print_solutions(program_data);
 
@@ -112,7 +168,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     int sum = 0;
-    for (i = 0; i < MOVEDISPLAY; i++) {
+    for (i = 0; i < move_display; i++) {
         printf("%d Movers: %d\n", i, movecount_stats[i]);
         sum += i * movecount_stats[i];
     }

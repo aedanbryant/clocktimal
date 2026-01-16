@@ -151,11 +151,17 @@ int main(int argc, char *argv[]) {
 
         // Compute optimals and write to file
         for (int i = 0; i < num_scrambles; i++) {
-            all_optimal(thread_data, threads, program_data, all_scrambles[i], num_threads);
+            if (metrics == MOVECOUNT) {
+                move_optimal(thread_data, threads, program_data, all_scrambles[i], num_threads);
+            } else if (metrics == TICKCOUNT) {
+                tick_optimal(thread_data, threads, program_data, all_scrambles[i], num_threads);
+            } else {
+                all_optimal(thread_data, threads, program_data, all_scrambles[i], num_threads);
+            }
             print_solutions(program_data, metrics, file);
 
-            if ((verbose > 0) && (i % verbose == 0)) {
-                printf("%d scrambles completed\n", i);
+            if ((verbose > 0) && ((i + 1) % verbose == 0)) {
+                printf("%d scrambles completed\n", i + 1);
             }
         }
 
