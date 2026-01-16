@@ -4,24 +4,24 @@ Optimal clock solver written in C! This was done for a class project, but I impr
 This was made for linux, if you are using windows I would reccommend installing WSL, idk about mac.
 
 1. Clone the repository
-2. Download data files from [here](https://drive.google.com/drive/folders/1CRzm2Bv9G5M9UZfZvoGMNmrzKGm5a-yr?usp=drive_link) and put them in the data folder
+2. Download data files from [here](https://drive.google.com/drive/folders/1CRzm2Bv9G5M9UZfZvoGMNmrzKGm5a-yr?usp=drive_link) and put them in a folder named "data" within the project folder.
 3. alternatively you generate them by running pinsets.py then pinsets_compact.py, warning this takes a while
 4. Run `make`
 5. Run `./clocktimal [OPTIONS]`
 6. input state as 14 integers separated by spaces, with each number representing which hour that clock is at (these can be negative). These are mapped to the clock as shown below. Then press enter, type "q" then enter to quit
 
 Front
-
+```
 1 2 3
 4 5 6
 7 8 9
-
+```
 Back (y2)
-
+```
 xx 10 xx 
 11 12 13
 xx 14 xx
-
+```
 
 ### Supports the following metrics
 Move optimal:
