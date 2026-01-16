@@ -414,3 +414,163 @@ void *find_tick_optimal_p(void *args) {
 
     pthread_exit(NULL);
 }
+
+void all_optimal(struct thread_args *thread_data, pthread_t *threads, DATA_T *program_data, int scramble[PINSET_LENGTH], int num_threads) {
+    int t, result;
+
+    // parallel calculate all moves
+    for (t = 0; t < num_threads; t++) {
+        thread_data[t].scramble = scramble;
+
+        result = pthread_create(&threads[t], NULL, calculate_all_moves_p, (void *)&thread_data[t]);
+
+        if (result) {
+            perror("error creating thread\n");
+            exit(1);
+        }
+    }
+
+    for(t=0;t<num_threads;t++) {
+        pthread_join(threads[t],NULL);
+    }
+
+
+
+    // parallel find all optimal
+    for (t = 0; t < num_threads; t++) {
+        thread_data[t].scramble = scramble;
+
+        result = pthread_create(&threads[t], NULL, find_all_optimal_p, (void *)&thread_data[t]);
+
+        if (result) {
+            perror("error creating thread\n");
+            exit(1);
+        }
+    }
+
+
+    (program_data->solution_info)->optmoves = __INT_MAX__;
+    (program_data->solution_info)->optticks = __INT_MAX__;
+    (program_data->solution_info)->optsimul = __INT_MAX__;
+    (program_data->solution_info)->optsimticks = __INT_MAX__;
+
+    for(t=0;t<num_threads;t++) {
+        pthread_join(threads[t],NULL);
+
+        if (thread_data[t].optmoves < (program_data->solution_info)->optmoves ||
+            ((thread_data[t].optmoves == (program_data->solution_info)->optmoves) && (thread_data[t].optmove_tickcount < (program_data->solution_info)->optmove_tickcount))) {
+            (program_data->solution_info)->optmoves = thread_data[t].optmoves;
+            (program_data->solution_info)->move_pinset = thread_data[t].move_pinset;
+            (program_data->solution_info)->optmove_tickcount = thread_data[t].optmove_tickcount;
+        }
+        if (thread_data[t].optticks < (program_data->solution_info)->optticks ||
+            ((thread_data[t].optticks == (program_data->solution_info)->optticks) && (thread_data[t].opttick_movecount < (program_data->solution_info)->opttick_movecount))) {
+            (program_data->solution_info)->optticks = thread_data[t].optticks;
+            (program_data->solution_info)->tick_pinset = thread_data[t].tick_pinset;
+            (program_data->solution_info)->opttick_movecount = thread_data[t].opttick_movecount;
+        }
+        if (thread_data[t].optsimul < (program_data->solution_info)->optsimul ||
+            ((thread_data[t].optsimul == (program_data->solution_info)->optsimul) && (thread_data[t].optsimul_movecount < (program_data->solution_info)->optsimul_movecount)) || 
+            ((thread_data[t].optsimul == (program_data->solution_info)->optsimul && thread_data[t].optsimul_movecount == (program_data->solution_info)->optsimul_movecount) && (thread_data[t].optsimul_tickcount < (program_data->solution_info)->optsimul_tickcount))) {
+            (program_data->solution_info)->optsimul = thread_data[t].optsimul;
+            (program_data->solution_info)->simul_pinset = thread_data[t].simul_pinset;
+        }
+        if (thread_data[t].optsimticks < (program_data->solution_info)->optsimticks ||
+            ((thread_data[t].optsimticks == (program_data->solution_info)->optsimticks) && (thread_data[t].optsimtick_simulcount < (program_data->solution_info)->optsimtick_simulcount)) || 
+            ((thread_data[t].optsimticks == (program_data->solution_info)->optsimticks && thread_data[t].optsimtick_simulcount == (program_data->solution_info)->optsimtick_simulcount) && (thread_data[t].optsimtick_movecount < (program_data->solution_info)->optsimtick_movecount))) {
+            (program_data->solution_info)->optsimticks = thread_data[t].optsimticks;
+            (program_data->solution_info)->simtick_pinset = thread_data[t].simtick_pinset;
+        }
+
+    }
+}
+
+void move_optimal(struct thread_args *thread_data, pthread_t *threads, DATA_T *program_data, int scramble[PINSET_LENGTH], int num_threads) {
+    int t, result;
+    
+    // parallel calculate all moves
+    for (t = 0; t < num_threads; t++) {
+        thread_data[t].scramble = scramble;
+
+        result = pthread_create(&threads[t], NULL, calculate_all_moves_p, (void *)&thread_data[t]);
+
+        if (result) {
+            perror("error creating thread\n");
+            exit(1);
+        }
+    }
+
+    for(t=0;t<num_threads;t++) {
+        pthread_join(threads[t],NULL);
+    }
+
+
+
+    // parallel find all optimal
+    for (t = 0; t < num_threads; t++) {
+        thread_data[t].scramble = scramble;
+
+        result = pthread_create(&threads[t], NULL, find_move_optimal_p, (void *)&thread_data[t]);
+
+        if (result) {
+            perror("error creating thread\n");
+            exit(1);
+        }
+    }
+
+    (program_data->solution_info)->optmoves = __INT_MAX__;
+
+    for(t=0;t<num_threads;t++) {
+        pthread_join(threads[t],NULL);
+
+        if (thread_data[t].optmoves < (program_data->solution_info)->optmoves) {
+            (program_data->solution_info)->optmoves = thread_data[t].optmoves;
+            (program_data->solution_info)->move_pinset = thread_data[t].move_pinset;
+        }
+    }
+}
+
+void tick_optimal(struct thread_args *thread_data, pthread_t *threads, DATA_T *program_data, int scramble[PINSET_LENGTH], int num_threads) {
+    int t, result;
+    
+    // parallel calculate all moves
+    for (t = 0; t < num_threads; t++) {
+        thread_data[t].scramble = scramble;
+
+        result = pthread_create(&threads[t], NULL, calculate_all_moves_p, (void *)&thread_data[t]);
+
+        if (result) {
+            perror("error creating thread\n");
+            exit(1);
+        }
+    }
+
+    for(t=0;t<num_threads;t++) {
+        pthread_join(threads[t],NULL);
+    }
+
+
+
+    // parallel find all optimal
+    for (t = 0; t < num_threads; t++) {
+        thread_data[t].scramble = scramble;
+
+        result = pthread_create(&threads[t], NULL, find_tick_optimal_p, (void *)&thread_data[t]);
+
+        if (result) {
+            perror("error creating thread\n");
+            exit(1);
+        }
+    }
+
+    (program_data->solution_info)->optticks = __INT_MAX__;
+
+    for(t=0;t<num_threads;t++) {
+        pthread_join(threads[t],NULL);
+
+        if (thread_data[t].optticks < (program_data->solution_info)->optticks) {
+            (program_data->solution_info)->optticks = thread_data[t].optticks;
+            (program_data->solution_info)->tick_pinset = thread_data[t].tick_pinset;
+        }
+    }
+}

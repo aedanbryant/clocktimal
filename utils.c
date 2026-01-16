@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #include "utils.h"
 #include "solvers.h"
+#include "clocktimal.h"
 
 // Checks if string is a valid number
 int is_valid_number(const char *str) {
@@ -16,8 +18,8 @@ int is_valid_number(const char *str) {
     }
     return 1;
 }
-
-
+    
+    
 // Get state from command line
 int get_scramble(int *scramble, int size) {
     char buffer[BUFFER_SIZE];
@@ -70,16 +72,16 @@ void cleanup(DATA_T *program_data) {
 
 
 
-void print_noflip_solution(DATA_T *program_data, int movecount, int pinset, char *name) {
+void print_noflip_solution(DATA_T *program_data, int movecount, int pinset, char *name, FILE *output_destination) {
     int i, move, movetype, next_movetype, next_move;
     int simul_state = NOT_SIMUL;
 
     const char *move_names[30] = {"UR","UR","DR","DR","DL","DL","UL","UL","U","U","R","R","D","D","L","L",
     "ur","ur","dr","dr","dl","dl","ul","ul","/","/","\\","\\","ALL","ALL"};
 
-    printf("Optimal %s: %d\n", name, movecount);
+    fprintf(output_destination, "Optimal %s: %d\n", name, movecount);
 
-    printf("Optimal Solution: ");
+    fprintf(output_destination, "Optimal Solution: ");
 
 
     for (i = 0; i < PINSET_LENGTH; i++) {
@@ -103,18 +105,18 @@ void print_noflip_solution(DATA_T *program_data, int movecount, int pinset, char
 
                 // print simul move if not skipped
                 if (move != 0 || next_move != 0) {
-                    printf("%s(%d,%d) ", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ], move, next_move);
+                    fprintf(output_destination, "%s(%d,%d) ", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ], move, next_move);
                 }
 
                 simul_state = NEXT_SIMUL;
             } else {
                 if (move != 0) {
-                    printf("%s(%d,0) ", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ], move);
+                    fprintf(output_destination, "%s(%d,0) ", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ], move);
                 }
             }
         } else if (simul_state == NOT_SIMUL) {
             if (move != 0) {
-                printf("%s(0,%d) ", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ], move);
+                fprintf(output_destination, "%s(0,%d) ", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ], move);
             }
         } else if (simul_state == NEXT_SIMUL) {
             simul_state = NOT_SIMUL;
@@ -122,20 +124,20 @@ void print_noflip_solution(DATA_T *program_data, int movecount, int pinset, char
 
 
     }
-    printf("\n");
+    fprintf(output_destination, "\n");
 
     
 }
 
-void print_flip_solution(DATA_T *program_data, int movecount, int pinset, char *name) {
+void print_flip_solution(DATA_T *program_data, int movecount, int pinset, char *name, FILE *output_destination) {
     int i, move;
 
     const char *move_names[30] = {"UR","ul","DR","dl","DL","dr","UL","ur","U","D","R","R","D","U","L","L",
     "ur","UL","dr","DL","dl","DR","ul","UR","/","/","\\","\\","ALL","ALL"};
 
-    printf("Optimal %s: %d\n", name, movecount);
+    fprintf(output_destination, "Optimal %s: %d\n", name, movecount);
 
-    printf("Optimal Solution: ");
+    fprintf(output_destination, "Optimal Solution: ");
 
     // loop through front moves
     for (i = 0; i < PINSET_LENGTH; i++) {
@@ -150,15 +152,15 @@ void print_flip_solution(DATA_T *program_data, int movecount, int pinset, char *
             if (move < -6) move += 12;
 
             // print movename
-            printf("%s", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ]);
+            fprintf(output_destination, "%s", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ]);
             
             // print move number
-            if (move < 0) printf("%d- ", move * -1);
-            else printf("%d+ ", move);
+            if (move < 0) fprintf(output_destination, "%d- ", move * -1);
+            else fprintf(output_destination, "%d+ ", move);
         }
     }
 
-    printf("y2 "); // print Y2 to flip clock
+    fprintf(output_destination, "y2 "); // print Y2 to flip clock
 
     // loop through back moves
     for (i = 0; i < PINSET_LENGTH; i++) {
@@ -172,14 +174,14 @@ void print_flip_solution(DATA_T *program_data, int movecount, int pinset, char *
             if (move > 6) move -= 12;
 
             // print movename
-            printf("%s", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ]);
+            fprintf(output_destination, "%s", move_names[ (program_data->pinsets)[ (pinset * PINSET_LENGTH) + i ] ]);
             
             // print move number
-            if (move < 0) printf("%d- ", move * -1);
-            else printf("%d+ ", move);
+            if (move < 0) fprintf(output_destination, "%d- ", move * -1);
+            else fprintf(output_destination, "%d+ ", move);
         }
     }
-    printf("\n");
+    fprintf(output_destination, "\n");
 
 
 }
@@ -188,16 +190,24 @@ void print_flip_solution(DATA_T *program_data, int movecount, int pinset, char *
 //     print_flip_solution(program_data, (program_data->solution_info)->optmoves, (program_data->solution_info)->move_pinset, "movecount");
 // }
 
-void print_solutions(DATA_T *program_data) {    
+void print_solutions(DATA_T *program_data, int metrics, FILE *output_destination) {    
 
+    if ((metrics & MOVECOUNT) || (metrics == 0)) {
+        print_flip_solution(program_data, (program_data->solution_info)->optmoves, (program_data->solution_info)->move_pinset, "movecount", output_destination);
+    }
 
-    /* OPTIMAL MOVES */
-    print_flip_solution(program_data, (program_data->solution_info)->optmoves, (program_data->solution_info)->move_pinset, "movecount");
-    print_flip_solution(program_data, (program_data->solution_info)->optticks, (program_data->solution_info)->tick_pinset, "tickcount");
+    if ((metrics & TICKCOUNT) || (metrics == 0)) {
+        print_flip_solution(program_data, (program_data->solution_info)->optticks, (program_data->solution_info)->tick_pinset, "tickcount", output_destination);
+    }
 
-    print_noflip_solution(program_data, (program_data->solution_info)->optsimul, (program_data->solution_info)->simul_pinset, "simul count");
-    print_noflip_solution(program_data, (program_data->solution_info)->optsimticks, (program_data->solution_info)->simtick_pinset, "simtick count");
-   
+    if ((metrics & SIMLULCOUNT) || (metrics == 0)) {
+        print_noflip_solution(program_data, (program_data->solution_info)->optsimul, (program_data->solution_info)->simul_pinset, "simul count", output_destination);
+    }
+
+    if ((metrics & SIMTICKCOUNT) || (metrics == 0)) {
+        print_noflip_solution(program_data, (program_data->solution_info)->optsimticks, (program_data->solution_info)->simtick_pinset, "simtick count", output_destination);
+    }
+
 }
 
 // void read_data(int **unique_rows, int *n_unique_rows, int **pinsets, int *n_pinsets, int **pinset_mappings, int *n_pinset_mappings) {
@@ -318,4 +328,61 @@ void read_data(DATA_T *program_data) {
         }
     }
     fclose(file);
+}
+
+
+/* For batch file input reading */
+long count_lines(FILE *fp) {
+    long lines = 0;
+    int c, last = '\n';
+
+    while ((c = fgetc(fp)) != EOF) {
+        if (c == '\n')
+            lines++;
+        last = c;
+    }
+
+    if (last != '\n')
+        lines++;
+
+    rewind(fp);
+    return lines;
+}
+
+// Get state from file line
+int parse_scramble(int *scramble, char *buffer, int size) {
+    int count = 0;
+
+    char *token = strtok(buffer, " \t\n");
+
+    while (token && count < size) {
+        if (is_valid_number(token)) {
+            scramble[count] = ((strtol(token, NULL, 10) % 12) + 12) % 12;
+        } else {
+            printf("Invalid input\n");
+            return 1;
+        }
+        count++;
+        token = strtok(NULL, " \t\n");
+    }
+
+    if (count < size) {
+        printf("Please input %d numbers\n", size);
+        return 1;
+    }
+
+    return 0;
+}
+
+int validate_input_file(const char *path)
+{
+    struct stat st;
+
+    if (stat(path, &st) != 0)
+        return -1;   // does not exist
+
+    if (!S_ISREG(st.st_mode))
+        return -1;   // not a regular file
+
+    return 0;
 }

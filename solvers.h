@@ -79,6 +79,8 @@ void *find_all_optimal_p(void *args);
 void *find_move_optimal_p(void *args);
 void *find_tick_optimal_p(void *args);
 
-
+void all_optimal(struct thread_args *thread_data, pthread_t *threads, DATA_T *program_data, int scramble[PINSET_LENGTH], int num_threads);
+void move_optimal(struct thread_args *thread_data, pthread_t *threads, DATA_T *program_data, int scramble[PINSET_LENGTH], int num_threads);
+void tick_optimal(struct thread_args *thread_data, pthread_t *threads, DATA_T *program_data, int scramble[PINSET_LENGTH], int num_threads);
 
 #endif

@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "utils.h"
 #include "solvers.h"
+#include "clocktimal.h"
+
 
 
 int main(int argc, char *argv[]) {
@@ -13,14 +16,54 @@ int main(int argc, char *argv[]) {
     int num_threads = 1;
 	pthread_t *threads;
 	struct thread_args *thread_data;
-    int t, result;
+    int t;
+
+    int batch_solving = 0;
+    char* input_file = NULL;
+    char* output_file = NULL;
+
+    int metrics = 0;
+    int verbose = 0;
 
     DATA_T *program_data;
     
     int scramble[PINSET_LENGTH];
 
-    if (argc == 2) {
-        num_threads = atoi(argv[1]);
+    /* Command Line Arguments */
+    int opt;
+    while ((opt = getopt(argc, argv, "t:i:o:mkscv:")) != -1) {
+        switch (opt) {
+        case 't':
+            num_threads = atoi(optarg);
+            break;
+        case 'i':
+            input_file = optarg;
+            batch_solving = 1;
+            break;
+        case 'o':
+            output_file = optarg;
+            break;
+        case 'm':
+            metrics |= MOVECOUNT;
+            break;
+        case 'k':
+            metrics |= TICKCOUNT;
+            break;
+        case 's':
+            metrics |= SIMLULCOUNT;
+            break;
+        case 'c':
+            metrics |= SIMTICKCOUNT;
+            break;
+        case 'v':
+            verbose = atoi(optarg);
+            break;
+        case ':':       /* -f or -o without operand */
+            fprintf(stderr, "Option -%c requires an operand\n", optopt);
+            break;
+        case '?':
+            fprintf(stderr, "Unrecognized option: '-%c'\n", optopt);
+        }
     }
 
     program_data = (DATA_T *)malloc(sizeof(DATA_T));
@@ -69,79 +112,75 @@ int main(int argc, char *argv[]) {
         }
     }
 
+
+    /* Batch Solving */
+    if (batch_solving == 1) {
+        FILE *file;
+        long num_scrambles;
+        char buffer[BUFFER_SIZE];
+        
+        
+
+        file = fopen(input_file, "r");
+        if (!file) {
+            perror("Error opening input file");
+            exit(1);
+        }
+
+        // Get number of scrambles in file
+        num_scrambles = count_lines(file);
+
+        // Read all scrambles into array
+        int all_scrambles[num_scrambles][PINSET_LENGTH];
+        for (int i = 0; i < num_scrambles; i++) {
+
+            fgets(buffer, sizeof buffer, file);
+
+            parse_scramble(all_scrambles[i], buffer, PINSET_LENGTH);
+        }
+        printf("Read %ld scrambles\n", num_scrambles);
+
+        fclose(file);
+        
+        // Open output file
+        if (output_file == NULL) {
+            printf("No output file given, defaulting to out.txt\n");
+            output_file = "out.txt";
+        }
+        file = fopen(output_file, "w");
+
+        // Compute optimals and write to file
+        for (int i = 0; i < num_scrambles; i++) {
+            all_optimal(thread_data, threads, program_data, all_scrambles[i], num_threads);
+            print_solutions(program_data, metrics, file);
+
+            if ((verbose > 0) && (i % verbose == 0)) {
+                printf("%d scrambles completed\n", i);
+            }
+        }
+
+        fclose(file);
+
+        return 0;
+
+    }
+
+    /* All Solutions */
     while(1) {
 
         if (get_scramble(scramble, PINSET_LENGTH)) {
             continue;
         }
 
-        // parallel calculate all move
-        for (t = 0; t < num_threads; t++) {
-            thread_data[t].scramble = scramble;
-
-            result = pthread_create(&threads[t], NULL, calculate_all_moves_p, (void *)&thread_data[t]);
-
-            if (result) {
-                perror("error creating thread\n");
-                exit(1);
-            }
+        if (metrics == MOVECOUNT) {
+            move_optimal(thread_data, threads, program_data, scramble, num_threads);
+        } else if (metrics == TICKCOUNT) {
+            tick_optimal(thread_data, threads, program_data, scramble, num_threads);
+        } else {
+            all_optimal(thread_data, threads, program_data, scramble, num_threads);
         }
 
-        for(t=0;t<num_threads;t++) {
-            pthread_join(threads[t],NULL);
-        }
-
-
-
-        // parallel find all optimal
-        for (t = 0; t < num_threads; t++) {
-            thread_data[t].scramble = scramble;
-
-            result = pthread_create(&threads[t], NULL, find_all_optimal_p, (void *)&thread_data[t]);
-
-            if (result) {
-                perror("error creating thread\n");
-                exit(1);
-            }
-        }
-
-
-        (program_data->solution_info)->optmoves = __INT_MAX__;
-        (program_data->solution_info)->optticks = __INT_MAX__;
-        (program_data->solution_info)->optsimul = __INT_MAX__;
-        (program_data->solution_info)->optsimticks = __INT_MAX__;
-
-        for(t=0;t<num_threads;t++) {
-            pthread_join(threads[t],NULL);
-
-            if (thread_data[t].optmoves < (program_data->solution_info)->optmoves ||
-                ((thread_data[t].optmoves == (program_data->solution_info)->optmoves) && (thread_data[t].optmove_tickcount < (program_data->solution_info)->optmove_tickcount))) {
-                (program_data->solution_info)->optmoves = thread_data[t].optmoves;
-                (program_data->solution_info)->move_pinset = thread_data[t].move_pinset;
-                (program_data->solution_info)->optmove_tickcount = thread_data[t].optmove_tickcount;
-            }
-            if (thread_data[t].optticks < (program_data->solution_info)->optticks ||
-                ((thread_data[t].optticks == (program_data->solution_info)->optticks) && (thread_data[t].opttick_movecount < (program_data->solution_info)->opttick_movecount))) {
-                (program_data->solution_info)->optticks = thread_data[t].optticks;
-                (program_data->solution_info)->tick_pinset = thread_data[t].tick_pinset;
-                (program_data->solution_info)->opttick_movecount = thread_data[t].opttick_movecount;
-            }
-            if (thread_data[t].optsimul < (program_data->solution_info)->optsimul ||
-                ((thread_data[t].optsimul == (program_data->solution_info)->optsimul) && (thread_data[t].optsimul_movecount < (program_data->solution_info)->optsimul_movecount)) || 
-                ((thread_data[t].optsimul == (program_data->solution_info)->optsimul && thread_data[t].optsimul_movecount == (program_data->solution_info)->optsimul_movecount) && (thread_data[t].optsimul_tickcount < (program_data->solution_info)->optsimul_tickcount))) {
-                (program_data->solution_info)->optsimul = thread_data[t].optsimul;
-                (program_data->solution_info)->simul_pinset = thread_data[t].simul_pinset;
-            }
-            if (thread_data[t].optsimticks < (program_data->solution_info)->optsimticks ||
-                ((thread_data[t].optsimticks == (program_data->solution_info)->optsimticks) && (thread_data[t].optsimtick_simulcount < (program_data->solution_info)->optsimtick_simulcount)) || 
-                ((thread_data[t].optsimticks == (program_data->solution_info)->optsimticks && thread_data[t].optsimtick_simulcount == (program_data->solution_info)->optsimtick_simulcount) && (thread_data[t].optsimtick_movecount < (program_data->solution_info)->optsimtick_movecount))) {
-                (program_data->solution_info)->optsimticks = thread_data[t].optsimticks;
-                (program_data->solution_info)->simtick_pinset = thread_data[t].simtick_pinset;
-            }
-
-        }
-
-        print_solutions(program_data);
+        print_solutions(program_data, metrics, stdout);
 
 
     }

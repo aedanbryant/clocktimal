@@ -9,6 +9,8 @@
 #include "solvers.h"
 
 
+#define MOVEDISPLAY 40
+
 int main(int argc, char *argv[]) {
 
     // Multithreading
@@ -75,7 +77,13 @@ int main(int argc, char *argv[]) {
     }
 
 
-    int movecount_stats[14] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    int movecount_stats[MOVEDISPLAY];
+
+    for (i = 0; i < MOVEDISPLAY; i++) {
+        movecount_stats[i] = 0;
+    }
+
+
     srand(time(NULL));
 
 
@@ -87,52 +95,14 @@ int main(int argc, char *argv[]) {
             scramble[j] = rand() % 12;  // Generates a number from 0 to 11
         }
 
-        // parallel calculate all move
-        for (t = 0; t < num_threads; t++) {
-            thread_data[t].scramble = scramble;
-
-            result = pthread_create(&threads[t], NULL, calculate_all_moves_p, (void *)&thread_data[t]);
-
-            if (result) {
-                perror("error creating thread\n");
-                exit(1);
-            }
-        }
-
-        for(t=0;t<num_threads;t++) {
-            pthread_join(threads[t],NULL);
-        }
-
-
-
-        // parallel find all optimal
-        for (t = 0; t < num_threads; t++) {
-            thread_data[t].scramble = scramble;
-
-            result = pthread_create(&threads[t], NULL, find_move_optimal_p, (void *)&thread_data[t]);
-
-            if (result) {
-                perror("error creating thread\n");
-                exit(1);
-            }
-        }
-
-        (program_data->solution_info)->optmoves = __INT_MAX__;
-
-        for(t=0;t<num_threads;t++) {
-            pthread_join(threads[t],NULL);
-
-            if (thread_data[t].optmoves < (program_data->solution_info)->optmoves) {
-                (program_data->solution_info)->optmoves = thread_data[t].optmoves;
-                (program_data->solution_info)->move_pinset = thread_data[t].move_pinset;
-            }
-        }
-
+        // move_optimal(thread_data, threads, program_data, scramble, num_threads);
+        tick_optimal(thread_data, threads, program_data, scramble, num_threads);
+        // all_optimal(thread_data, threads, program_data, scramble, num_threads);
 
 
         printf("\rCount: %d", i + 1);
         fflush(stdout);
-        movecount_stats[(program_data->solution_info)->optmoves]++;
+        movecount_stats[(program_data->solution_info)->optticks]++;
 
 
 
@@ -142,7 +112,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     int sum = 0;
-    for (i = 0; i < 14; i++) {
+    for (i = 0; i < MOVEDISPLAY; i++) {
         printf("%d Movers: %d\n", i, movecount_stats[i]);
         sum += i * movecount_stats[i];
     }

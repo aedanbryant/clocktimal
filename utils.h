@@ -22,9 +22,10 @@ struct pinset_data {
 int is_valid_number(const char *str);
 int get_scramble(int *scramble, int size);
 void cleanup(DATA_T *program_data);
-void print_solutions(DATA_T *program_data);
+void print_solutions(DATA_T *program_data, int metrics, FILE *output_destination);
 void read_data(DATA_T *program_data);
-
+long count_lines(FILE *fp);
+int parse_scramble(int *scramble, char *buffer, int size);
 
 
 #endif
