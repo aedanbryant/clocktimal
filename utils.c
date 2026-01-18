@@ -81,7 +81,7 @@ void print_noflip_solution(DATA_T *program_data, int movecount, int pinset, char
 
     fprintf(output_destination, "Optimal %s: %d\n", name, movecount);
 
-    fprintf(output_destination, "Optimal Solution: ");
+    fprintf(output_destination, "Optimal %s Solution: ", name);
 
 
     for (i = 0; i < PINSET_LENGTH; i++) {
@@ -137,7 +137,7 @@ void print_flip_solution(DATA_T *program_data, int movecount, int pinset, char *
 
     fprintf(output_destination, "Optimal %s: %d\n", name, movecount);
 
-    fprintf(output_destination, "Optimal Solution: ");
+    fprintf(output_destination, "Optimal %s Solution: ", name);
 
     // loop through front moves
     for (i = 0; i < PINSET_LENGTH; i++) {

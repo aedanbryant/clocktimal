@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     int i, j;
     int scrambles = 100;
     int metrics = MOVECOUNT;
-    int verbose = 0;
+    int verbose = 1;
     int move_display = 14;
 
     DATA_T *program_data;
