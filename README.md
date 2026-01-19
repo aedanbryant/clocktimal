@@ -26,10 +26,13 @@ xx 14 xx
 ### Supports the following metrics
 Move optimal:
 - Each dial turn is a move
+
 Tick optimal:
 - Each tick is a move
+
 Simul optimal:
 - If two moves can be done at the same time it counts as a single move
+
 Simtick optimal:
 - If two ticks can be done at the same time it counts as a single move
 
